@@ -1,5 +1,5 @@
 {
-  "name": "language-javascript",
+  "name": "language-javascript-glsl",
   "version": "0.125.1",
   "description": "JavaScript language support in Atom",
   "engines": {

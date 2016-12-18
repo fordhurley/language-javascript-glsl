@@ -36,7 +36,7 @@
     (?=\\s|:|$)
   )
 '''
-'name': 'JavaScript'
+'name': 'JavaScript (GLSL)'
 'patterns': [
   {
     # ES6 import
@@ -1371,6 +1371,30 @@
           {
             'match': '[^"]*[^\\n\\r"\\\\]$'
             'name': 'invalid.illegal.string.js'
+          }
+        ]
+      }
+      {
+        'begin': '(`)\\s*(\/\/\\s*glsl)'
+        'beginCaptures':
+          '1':
+            'name': 'punctuation.definition.string.begin.js'
+          '2':
+            'name': 'punctuation.definition.comment.glsl'
+        'end': '`'
+        'endCaptures':
+          '0':
+            'name': 'punctuation.definition.string.end.js'
+        'name': 'string.quoted.template.glsl.js'
+        'patterns': [
+          {
+            'include': '#string_escapes'
+          }
+          {
+            'include': '#interpolated_js'
+          }
+          {
+            'include': 'source.glsl'
           }
         ]
       }
