@@ -1375,6 +1375,15 @@
         ]
       }
       {
+        'begin': '(S|s)haders\\.\\S*\\s*(=|:)\\s*`'
+        'end': '`'
+        'patterns': [
+          {
+            'include': 'source.glsl'
+          }
+        ]
+      }
+      {
         'begin': '(vertexShader|fragmentShader)\\s*:\\s*`'
         'end': '`'
         'patterns': [
