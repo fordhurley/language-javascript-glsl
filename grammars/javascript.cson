@@ -1376,8 +1376,18 @@
         ]
       }
       {
-        'begin': 'Shaders.\\S+\\s*=\\s*`'
+        'begin': '(Shaders.\\S+)\\s*(=)\\s*(`)'
+        'beginCaptures':
+          '1':
+            'name': 'variable.other.object.js'
+          '2':
+            'name': 'keyword.operator.assignment.js'
+          '3':
+            'name': 'punctuation.definition.string.begin.js'
         'end': '`'
+        'endCaptures':
+          '0':
+            'name': 'punctuation.definition.string.end.js'
         'patterns': [
           {
             'include': 'source.glsl'
@@ -1385,8 +1395,18 @@
         ]
       }
       {
-        'begin': '(vertexShader|fragmentShader)\\s*:\\s*`'
+        'begin': '(vertexShader|fragmentShader)\\s*(:)\\s*(`)'
+        'beginCaptures':
+          '1':
+            'name': 'source.js'
+          '2':
+            'name': 'keyword.operator.assignment.js'
+          '3':
+            'name': 'punctuation.definition.string.begin.js'
         'end': '`'
+        'endCaptures':
+          '0':
+            'name': 'punctuation.definition.string.end.js'
         'patterns': [
           {
             'include': 'source.glsl'
