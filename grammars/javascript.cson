@@ -1376,7 +1376,7 @@
         ]
       }
       {
-        'begin': 'SC.Shaders.\\S*\\s*=\\s*`'
+        'begin': 'Shaders.\\S+\\s*=\\s*`'
         'end': '`'
         'patterns': [
           {
