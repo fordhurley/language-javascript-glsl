@@ -11,6 +11,7 @@
   'jsm'
   'json5'
   'jspre'
+  'mjs'
   'pac'
   'pjs'
   'sjs'
@@ -472,12 +473,12 @@
         (
           \\b(get|set)            # Property getter/setter: get foo(){}
           (?:\\s+|(?=\\[))        # Followed by whitespace or square bracket
-        )?
+        )?+
         (                         # Method name
           \\b[a-zA-Z_$][\\w$]*    # Fixed name
           |
           \\[                     # Computed property key
-            .*?[^\\[\\]\\s].*?    # Contains at least one non-brace character
+            [^\\[\\]]++           # Contains at least one non-brace character
           \\]
         )
         \\s*\\(\\s*               # Start of arguments list
@@ -1475,6 +1476,30 @@
         ]
       }
       {
+        'begin': '(sql|SQL|Sql)\\s*(`)'
+        'beginCaptures':
+          '1':
+            'name': 'entity.name.function.js'
+          '2':
+            'name': 'punctuation.definition.string.begin.js'
+        'end': '`'
+        'endCaptures':
+          '0':
+            'name': 'punctuation.definition.string.end.js'
+        'name': 'string.quoted.template.sql.js'
+        'patterns': [
+          {
+            'include': '#string_escapes'
+          }
+          {
+            'include': '#interpolated_js'
+          }
+          {
+            'include': 'source.sql'
+          }
+        ]
+      }
+      {
         'begin': '`'
         'beginCaptures':
           '0':
@@ -1518,7 +1543,7 @@
             'name': 'punctuation.definition.unicode-escape.end.bracket.curly.js'
       }
       {
-        'match': '\\\\(x\\h{2}|[0-2][0-7]{0,2}|3[0-6][0-7]?|37[0-7]?|[4-7][0-7]?|.)'
+        'match': '\\\\(x[0-9A-Fa-f]{2}|[0-2][0-7]{0,2}|3[0-6][0-7]?|37[0-7]?|[4-7][0-7]?|.)'
         'name': 'constant.character.escape.js'
       }
     ]
@@ -1673,7 +1698,7 @@
                   contextual|confirm|compile|clear|captureEvents|call|createStyleSheet|createPopup|
                   createEventObject|to(GMTString|UTCString|String|Source|UpperCase|LowerCase|LocaleString)|
                   test|taint|taintEnabled|indexOf|italics|disableExternalCapture|dump|detachEvent|unshift|
-                  untaint|unwatch|updateCommands|join|javaEnabled|pop|push|plugins.refresh|paddings|parse|
+                  untaint|unwatch|updateCommands|join|javaEnabled|pop|push|plugins.refresh|paddings|parse|stringify|
                   print|prompt|preference|enableExternalCapture|exec|execScript|valueOf|UTC|find|file|
                   fileModifiedDate|fileSize|fileCreatedDate|fileUpdatedDate|fixed|fontsize|fontcolor|
                   forward|fromCharCode|watch|link|load|lastIndexOf|anchor|attachEvent|atob|apply|alert|
@@ -1877,401 +1902,30 @@
         ]
       }
     ]
-  'docblock':
-    'patterns': [
-      {
-        'match': '''(?x) (?<!\\w)@
-          (abstract|access|alias|arg|argument|async|attribute|augments|author|beta|borrows|bubbes|callback|chainable|class
-          |classdesc|code|config|const|constant|constructor|constructs|copyright|default|defaultvalue|define|deprecated|desc
-          |description|dict|emits|enum|event|example|exports?|extends|extension|extension_for|extensionfor|external|file
-          |fileoverview|final|fires|for|function|global|host|ignore|implements|implicitCast|inherit[Dd]oc|inner|instance
-          |interface|kind|lends|license|listens|main|member|memberof|method|mixex|mixins?|modifies|module|name|namespace
-          |noalias|nocollapse|nocompile|nosideeffects|override|overview|package|param|preserve|private|prop|property
-          |protected|public|read[Oo]nly|record|require[ds]|returns?|see|since|static|struct|submodule|summary|suppress
-          |template|this|throws|todo|type|typedef|unrestricted|uses|var|variation|version|virtual|writeOnce)\\b
-        '''
-        'name': 'storage.type.class.jsdoc'
-      }
-      {
-        'match': '''(?x)
-          (
-            \\[
-              [^\\]]+            # Optional [link text] preceding {@link syntax}
-            \\]
-
-            (?!                  # Check to avoid highlighting two sets of link text
-              {
-                @\\w+            # Tagname
-                \\s+
-                [^\\s|}]+        # Namepath/URL
-                [\\s|]           # Whitespace or bar delimiting description
-                [^}]*
-              }
-            )
-          )?
-
-          (?:
-            {
-              (
-                @
-                (?: link         # Name of tag
-                  | linkcode
-                  | linkplain
-                  | tutorial
-                )
-              )
-
-              \\s+
-
-              ([^\\s|}]+)        # Namepath or URL
-
-              (?:                # Optional link text following link target
-                [\\s|]           # Bar or space separating target and text
-                [^}]*            # Actual text
-              )?
-            }
-          )
-        '''
-        'captures':
-          '0':
-            'name': 'entity.name.type.instance.jsdoc'
-          '1':
-            'name': 'constant.other.description.jsdoc'
-          '2':
-            'name': 'storage.type.class.jsdoc'
-          '3':
-            'name': 'variable.other.description.jsdoc'
-        'name': 'other.meta.jsdoc'
-      }
-      {
-        'match': '''(?x)
-          (?:(?<=@param)|(?<=@arg)|(?<=@argument)|(?<=@type))
-          \\s+
-          ({(?:
-            \\* |                                       # {*} any type
-            \\? |                                       # {?} unknown type
-
-            (?:
-              (?:                                       # Check for a prefix
-                \\? |                                   # {?string} nullable type
-                !   |                                   # {!string} non-nullable type
-                \\.{3}                                  # {...string} variable number of parameters
-                [*?]?                                   # {...*} Variable number of mixed types
-              )?
-
-              (?:
-                (?:
-                  function                              # {function(string, number)} function type
-                  \\s*
-                  (?:
-                    (?:
-                      \\(\\s*
-                      \\.{3}[a-zA-Z_$][\\w$]+           # {function(...string)} variable number of parameters
-                      \\s*\\)
-                    )
-                    |
-                    (?:
-                      \\(\\s*
-                      (?:
-                        (?:\\?|!)?                      # {function(?string)} or function(!string)} nullable/non-nullable type
-                        [a-zA-Z_$][\\w$]+
-                        (?:\\[\\])?                     # {function(string[])} type application, an array of strings
-                        (?:
-                          (?:
-                            (?:
-                              \\s*,\\s*
-                              (?:\\?|!)?                # {function(?string)} or function(!string)} nullable/non-nullable type
-                              [a-zA-Z_$][\\w$]+
-                              (?:\\[\\])?               # {function(string[])} type application, an array of strings
-                            )*
-                            (?:
-                              \\s*,\\s*
-                              \\.{3}[a-zA-Z_$][\\w$]+   # {function(string, ...string)} variable number of parameters
-                            )?
-                          )
-                          |
-                          (?:
-                            =?                          # {function(string=)} optional parameter
-                            (?:
-                              (?<!=)                    # {function(string, string, number)} loop non-optional params
-                              \\s*,\\s*
-                              (?:\\?|!)?                # {function(?string)} or function(!string)} nullable/non-nullable type
-                              [a-zA-Z_$][\\w$]+
-                              (?:\\[\\])?               # {function(string[])} type application, an array of strings
-                              =?
-                            )*
-                            (?:
-                              (?<==)                    # {function(string, string=, number=)} loop optional params
-                              \\s*,\\s*
-                              (?:\\?|!)?                # {function(?string)} or function(!string)} nullable/non-nullable type
-                              [a-zA-Z_$][\\w$]+
-                              (?:\\[\\])?               # {function(string[])} type application, an array of strings
-                              =
-                            )*
-                          )
-                        )
-                      )?
-                      \\s*\\)
-                    )
-                  )
-                  (?:                                   # {function(): string} function return type
-                    \\s*:\\s*
-                    [a-zA-Z_$][\\w$]*
-                  )?
-                )?
-                |
-                (?:
-                  \\(                                   # Opening bracket of multiple types with parenthesis {(string|number)}
-                    [a-zA-Z_$]+
-                    (?:
-                      (?:
-                        [\\w$]*
-                        (?:\\[\\])?                     # {(string[]|number)} type application, an array of strings or a number
-                      ) |
-                      \\.?<[\\w$]+(?:,\\s+[\\w$]+)*>    # {Array<string>} or {Object<string, number>} type application (optional .)
-                    )
-                    (?:
-                      [\\.|~]                           # {Foo.bar} namespaced, {string|number} multiple, {Foo~bar} class-specific callback
-                      [a-zA-Z_$]+
-                      (?:
-                        (?:
-                          [\\w$]*
-                          (?:\\[\\])?                   # {(string|number[])} type application, a string or an array of numbers
-                        ) |
-                        \\.?<[\\w$]+(?:,\\s+[\\w$]+)*>  # {Array<string>} or {Object<string, number>} type application (optional .)
-                      )
-                    )*
-                  \\) |
-                  [a-zA-Z_$]+
-                  (?:
-                    (?:
-                      [\\w$]*
-                      (?:\\[\\])?                       # {(string|number[])} type application, a string or an array of numbers
-                    ) |
-                    \\.?<[\\w$]+(?:,\\s+[\\w$]+)*>      # {Array<string>} or {Object<string, number>} type application (optional .)
-                  )
-                  (?:
-                    [\\.|~]                             # {Foo.bar} namespaced, {string|number} multiple, {Foo~bar} class-specific callback
-                    [a-zA-Z_$]+
-                    (?:
-                      [\\w$]* |
-                      \\.?<[\\w$]+(?:,\\s+[\\w$]+)*>    # {Array<string>} or {Object<string, number>} type application (optional .)
-                    )
-                  )*
-                )
-              )
-                                                        # Check for suffix
-              (?:\\[\\])?                               # {string[]} type application, an array of strings
-              =?                                        # {string=} optional parameter
-            )
-          )})
-          \\s+
-          (
-            \\[                                         # [foo] optional parameter
-              \\s*
-              (?:
-                [a-zA-Z_$][\\w$]*
-                (?:
-                  (?:\\[\\])?                           # Foo[].bar properties within an array
-                  \\.                                   # Foo.Bar namespaced parameter
-                  [a-zA-Z_$][\\w$]*
-                )*
-                (?:
-                  \\s*
-                  =                                     # [foo=bar] Default parameter value
-                  \\s*
-                  (?:
-                    [\\w$.\\s]* |                       # [foo=bar] Unquoted
-                    "[^"]*"     |                       # [foo="bar"] Double-quoted
-                    '[^']*'     |                       # [foo='bar'] Single-quoted
-                    {[^{}]*}    |                       # [foo={a:1}] Object literal
-                    \\[ [^\\[\\]]* \\]                  # [foo=[1,2]] Array literal
-                  )
-                )?
-              )
-              \\s*
-            \\] |
-            (?:
-              [a-zA-Z_$][\\w$]*
-              (?:
-                (?:\\[\\])?                             # Foo[].bar properties within an array
-                \\.                                     # Foo.Bar namespaced parameter
-                [a-zA-Z_$][\\w$]*
-              )*
-            )?
-          )
-          \\s+
-          (?:-\\s+)?                                     # optional hyphen before the description
-          ((?:(?!\\*\\/).)*)                             # The type description
-        '''
-        'captures':
-          '0':
-            'name': 'other.meta.jsdoc'
-          '1':
-            'name': 'entity.name.type.instance.jsdoc'
-          '2':
-            'name': 'variable.other.jsdoc'
-          '3':
-            'name': 'other.description.jsdoc'
-            'patterns': [
-              {
-                'include': '#docblock'
-              }
-            ]
-      }
-      {
-        'match': '''(?x)
-          ({(?:
-            \\* |                                       # {*} any type
-            \\? |                                       # {?} unknown type
-
-            (?:
-              (?:                                       # Check for a prefix
-                \\? |                                   # {?string} nullable type
-                !   |                                   # {!string} non-nullable type
-                \\.{3}                                  # {...string} variable number of parameters
-                [*?]?                                   # {...*} Variable number of mixed types
-              )?
-
-              (?:
-                (?:
-                  function                              # {function(string, number)} function type
-                  \\s*
-                  (?:
-                    (?:
-                      \\(\\s*
-                      \\.{3}[a-zA-Z_$][\\w$]+           # {function(...string)} variable number of parameters
-                      \\s*\\)
-                    )
-                    |
-                    (?:
-                      \\(\\s*
-                      (?:
-                        (?:\\?|!)?                      # {function(?string)} or function(!string)} nullable/non-nullable type
-                        [a-zA-Z_$][\\w$]+
-                        (?:\\[\\])?                     # {function(string[])} type application, an array of strings
-                        (?:
-                          (?:
-                            (?:
-                              \\s*,\\s*
-                              (?:\\?|!)?                # {function(?string)} or function(!string)} nullable/non-nullable type
-                              [a-zA-Z_$][\\w$]+
-                              (?:\\[\\])?               # {function(string[])} type application, an array of strings
-                            )*
-                            (?:
-                              \\s*,\\s*
-                              \\.{3}[a-zA-Z_$][\\w$]+   # {function(string, ...string)} variable number of parameters
-                            )?
-                          )
-                          |
-                          (?:
-                            =?                          # {function(string=)} optional parameter
-                            (?:
-                              (?<!=)                    # {function(string, string, number)} loop non-optional params
-                              \\s*,\\s*
-                              (?:\\?|!)?                # {function(?string)} or function(!string)} nullable/non-nullable type
-                              [a-zA-Z_$][\\w$]+
-                              (?:\\[\\])?               # {function(string[])} type application, an array of strings
-                              =?
-                            )*
-                            (?:
-                              (?<==)                    # {function(string, string=, number=)} loop optional params
-                              \\s*,\\s*
-                              (?:\\?|!)?                # {function(?string)} or function(!string)} nullable/non-nullable type
-                              [a-zA-Z_$][\\w$]+
-                              (?:\\[\\])?               # {function(string[])} type application, an array of strings
-                              =
-                            )*
-                          )
-                        )
-                      )?
-                      \\s*\\)
-                    )
-                  )
-                  (?:                                   # {function(): string} function return type
-                    \\s*:\\s*
-                    [a-zA-Z_$][\\w$]*
-                  )?
-                )?
-                |
-                (?:
-                  \\(                                   # Opening bracket of multiple types with parenthesis {(string|number)}
-                    [a-zA-Z_$]+
-                    (?:
-                      (?:
-                        [\\w$]*
-                        (?:\\[\\])?                     # {(string[]|number)} type application, an array of strings or a number
-                      ) |
-                      \\.?<[\\w$]+(?:,\\s+[\\w$]+)*>    # {Array<string>} or {Object<string, number>} type application (optional .)
-                    )
-                    (?:
-                      [\\.|~]                           # {Foo.bar} namespaced, {string|number} multiple, {Foo~bar} class-specific callback
-                      [a-zA-Z_$]+
-                      (?:
-                        (?:
-                          [\\w$]*
-                          (?:\\[\\])?                   # {(string|number[])} type application, a string or an array of numbers
-                        ) |
-                        \\.?<[\\w$]+(?:,\\s+[\\w$]+)*>  # {Array<string>} or {Object<string, number>} type application (optional .)
-                      )
-                    )*
-                  \\) |
-                  [a-zA-Z_$]+
-                  (?:
-                    (?:
-                      [\\w$]*
-                      (?:\\[\\])?                       # {(string|number[])} type application, a string or an array of numbers
-                    ) |
-                    \\.?<[\\w$]+(?:,\\s+[\\w$]+)*>      # {Array<string>} or {Object<string, number>} type application (optional .)
-                  )
-                  (?:
-                    [\\.|~]                             # {Foo.bar} namespaced, {string|number} multiple, {Foo~bar} class-specific callback
-                    [a-zA-Z_$]+
-                    (?:
-                      [\\w$]* |
-                      \\.?<[\\w$]+(?:,\\s+[\\w$]+)*>    # {Array<string>} or {Object<string, number>} type application (optional .)
-                    )
-                  )*
-                )
-              )
-                                                        # Check for suffix
-              (?:\\[\\])?                               # {string[]} type application, an array of strings
-              =?                                        # {string=} optional parameter
-            )
-          )})
-          \\s+
-          (?:-\\s+)?                                    # optional hyphen before the description
-          ((?:(?!\\*\\/).)*)                            # The type description
-        '''
-        'captures':
-          '0':
-            'name': 'other.meta.jsdoc'
-          '1':
-            'name': 'entity.name.type.instance.jsdoc'
-          '2':
-            'name': 'other.description.jsdoc'
-            'patterns': [
-              {
-                'include': '#docblock'
-              }
-            ]
-      }
-    ]
   'comments':
     'patterns': [
       {
-        'begin': '/\\*\\*(?!/)'
+        'captures':
+          '1':
+            'name': 'punctuation.definition.comment.begin.js'
+          '2':
+            'name': 'punctuation.definition.comment.end.js'
+        'match': '(/\\*)(\\*/)'
+        'name': 'comment.block.empty.js'
+      }
+      {
+        'begin': '/\\*\\*'
         'beginCaptures':
           '0':
-            'name': 'punctuation.definition.comment.js'
+            'name': 'punctuation.definition.comment.begin.js'
         'end': '\\*/'
         'endCaptures':
           '0':
-            'name': 'punctuation.definition.comment.js'
+            'name': 'punctuation.definition.comment.end.js'
         'name': 'comment.block.documentation.js'
         'patterns': [
           {
-            'include': '#docblock'
+            'include': 'source.jsdoc'
           }
         ]
       }
@@ -2279,29 +1933,20 @@
         'begin': '/\\*'
         'beginCaptures':
           '0':
-            'name': 'punctuation.definition.comment.js'
+            'name': 'punctuation.definition.comment.begin.js'
         'end': '\\*/'
         'endCaptures':
           '0':
-            'name': 'punctuation.definition.comment.js'
+            'name': 'punctuation.definition.comment.end.js'
         'name': 'comment.block.js'
       }
       {
-        'begin': '(^[ \\t]+)?(?=//)'
+        'begin': '//'
         'beginCaptures':
-          '1':
-            'name': 'punctuation.whitespace.comment.leading.js'
-        'end': '(?!\\G)'
-        'patterns': [
-          {
-            'begin': '//'
-            'beginCaptures':
-              '0':
-                'name': 'punctuation.definition.comment.js'
-            'end': '\\n'
-            'name': 'comment.line.double-slash.js'
-          }
-        ]
+          '0':
+            'name': 'punctuation.definition.comment.js'
+        'end': '$'
+        'name': 'comment.line.double-slash.js'
       }
     ]
   'switch_statement':
