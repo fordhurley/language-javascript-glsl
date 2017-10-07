@@ -1,4 +1,4 @@
-var vertexShader = ` // glsl
+var vertexShader: ` // glsl
   attribute vec3 position;
   attribute float time;
 
@@ -12,7 +12,7 @@ var vertexShader = ` // glsl
   }
 `
 
-var fragmentShader = `//glsl
+var fragmentShader: `// glsl
   varying float age;
   void main() {
     if (age < 0) { discard; }
